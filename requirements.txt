@@ -23,3 +23,7 @@ python-dotenv>=1.0.0
 beautifulsoup4>=4.12.0
 lxml>=5.0.0
 tqdm>=4.66.0
+# Compatibility
+pydantic<2.0.0           # chromadb currently requires pydantic v1
+# ML runtime for sentence-transformers
+torch>=2.1.0
