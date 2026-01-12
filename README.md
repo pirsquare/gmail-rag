@@ -98,26 +98,6 @@ python run_indexer.py --force
 python run_indexer.py --max-emails 1000 --force
 ```
 
-## 📁 Project Structure
-
-```
-gmail-rag/
-├── src/                    # Main application package
-│   ├── app.py             # Streamlit web interface
-│   ├── index_emails.py    # CLI indexing script
-│   ├── gmail_client.py    # Gmail API integration
-│   ├── email_processor.py # Email processing
-│   ├── rag_engine.py      # RAG pipeline
-│   └── config.py          # Configuration
-├── run_app.py             # App entry point
-├── run_indexer.py         # Indexer entry point
-├── requirements.txt       # Dependencies
-├── .env.example           # Config template
-├── QUICKSTART.md          # Quick reference
-├── PRIVACY.md             # Privacy documentation
-└── README.md              # This file
-```
-
 ## ⚙️ Configuration
 
 Edit `.env` to customize:
@@ -184,10 +164,6 @@ Run indexing first: `python run_indexer.py` or use the web interface.
 ## 📝 License
 
 See [LICENSE](LICENSE) file for details.
-
-## 🤝 Contributing
-
-Contributions welcome! Please open an issue or submit a pull request.
 
 ---
 
