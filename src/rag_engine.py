@@ -3,7 +3,8 @@ import os
 from typing import List, Dict
 from langchain.schema import Document
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_openai import ChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
@@ -21,9 +22,10 @@ class RAGEngine:
             persist_directory: Directory to persist ChromaDB
         """
         self.persist_directory = persist_directory or Config.CHROMA_PERSIST_DIRECTORY
-        self.embeddings = OpenAIEmbeddings(
-            model=Config.EMBEDDING_MODEL,
-            openai_api_key=Config.OPENAI_API_KEY
+        # Use local embeddings for privacy - no data sent to external APIs
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name=Config.EMBEDDING_MODEL,
+            model_kwargs={"device": "cpu"}  # Use CPU; change to "cuda" if GPU available
         )
         self.vectorstore = None
         self.conversation_chain = None

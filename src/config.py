@@ -22,8 +22,8 @@ class Config:
     CHROMA_PERSIST_DIRECTORY = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
     COLLECTION_NAME = "gmail_emails"
     
-    # Embedding Settings
-    EMBEDDING_MODEL = "text-embedding-ada-002"  # OpenAI embeddings
+    # Embedding Settings (Local - No data sent to external APIs)
+    EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # Local sentence-transformer model
     CHUNK_SIZE = 1000
     CHUNK_OVERLAP = 200
     
@@ -34,7 +34,7 @@ class Config:
     def validate(cls):
         """Validate required configuration."""
         if not cls.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY is required. Please set it in .env file")
+            raise ValueError("OPENAI_API_KEY is required for LLM. Please set it in .env file")
 
 
 # Validate configuration on import

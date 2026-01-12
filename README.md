@@ -9,15 +9,22 @@ A powerful RAG (Retrieval-Augmented Generation) application that enables semanti
 - **Conversational AI**: Chat with your inbox using GPT models
 - **Vector Database**: Efficient storage and retrieval using ChromaDB
 - **Modern UI**: Clean Streamlit interface for easy interaction
-- **Privacy-Focused**: All data stored locally on your machine
+- **🔒 Privacy-Focused**: Local embeddings - email content stays on your machine, only LLM interactions use APIs
 
 ## 🏗️ Architecture
 
 - **LangChain**: Orchestration and RAG pipeline
-- **ChromaDB**: Vector database for embeddings
-- **OpenAI Embeddings**: High-quality text embeddings
+- **ChromaDB**: Local vector database for embeddings
+- **Sentence-Transformers**: Local embeddings (no external API calls for embeddings)
+- **OpenAI LLM**: GPT models for conversational AI
 - **Gmail API**: Email retrieval
 - **Streamlit**: Interactive web interface
+
+### Privacy Model
+
+- **Local Processing**: Email content and embeddings are processed and stored locally
+- **Minimal API Usage**: Only LLM conversations are sent to OpenAI (configurable)
+- **No Email Data Sent**: Email content never leaves your machine for embedding
 
 ## 📋 Prerequisites
 
@@ -113,26 +120,6 @@ python run_indexer.py --force
 python run_indexer.py --max-emails 1000 --force
 ```
 
-## 📁 Project Structure
-
-```
-gmail-rag/
-├── src/                    # Main application package
-│   ├── __init__.py        # Package initializer
-│   ├── app.py             # Streamlit web interface
-│   ├── index_emails.py    # CLI indexing script
-│   ├── gmail_client.py    # Gmail API integration
-│   ├── email_processor.py # Email processing and chunking
-│   ├── rag_engine.py      # RAG pipeline and vector store
-│   └── config.py          # Configuration management
-├── run_app.py             # App entry point (alternative)
-├── run_indexer.py         # Indexer entry point (alternative)
-├── requirements.txt       # Python dependencies
-├── .env.example           # Environment variables template
-├── .gitignore             # Git ignore rules
-└── README.md              # This file
-```
-
 ## ⚙️ Configuration
 
 Edit [.env](.env) to customize:
@@ -145,10 +132,20 @@ Edit [.env](.env) to customize:
 | `TEMPERATURE` | LLM temperature (0-1) | 0.7 |
 | `CHROMA_PERSIST_DIRECTORY` | Vector DB location | ./chroma_db |
 
-Advanced settings in [config.py](config.py):
-- `CHUNK_SIZE`: Document chunk size (default: 1000)
-- `CHUNK_OVERLAP`: Chunk overlap (default: 200)
-- `TOP_K_RESULTS`: Number of documents to retrieve (default: 5)
+Advanced settings in [config.py](config.py): on your machine
+- **Local Embeddings**: Uses sentence-transformers for embeddings - no external API calls needed
+- **Minimal External Calls**: Only LLM interactions use external APIs (can be replaced with local LLMs)
+- **API Keys**: Never commit `.env` file or credentials
+- **OAuth**: Gmail authentication uses secure OAuth 2.0
+- **Credentials**: `credentials.json` and `token.json` are gitignored
+
+### Data Flow
+
+```
+Gmail Inbox → Local Storage → Local Embeddings → Vector DB (Local)
+            ↓
+        User Query → Local Similarity Search → Retrieved Docs → LLM API → Response
+```
 
 ## 🔒 Security & Privacy
 
@@ -158,13 +155,14 @@ Advanced settings in [config.py](config.py):
 - **Credentials**: `credentials.json` and `token.json` are gitignored
 
 ## 🐛 Troubleshooting
-
-### "credentials.json not found"
-Download OAuth credentials from Google Cloud Console and place in project root.
-
-### "OPENAI_API_KEY is required"
-Set your OpenAI API key in the `.env` file.
-
+local LLMs (Ollama, LLaMA, Mistral)
+- [ ] Support for multiple email accounts
+- [ ] Email filtering by date range, sender, labels
+- [ ] Export search results
+- [ ] Advanced metadata filtering
+- [ ] Email summarization
+- [ ] Automatic re-indexing on schedule
+- [ ] GPU acceleration for embeddings
 ### "No emails fetched"
 - Check your Gmail API is enabled
 - Verify OAuth authenticatiorun_indexer
@@ -182,18 +180,6 @@ Run indexing first: `python index_emails.py` or use the web interface.
 - [ ] Advanced metadata filtering
 - [ ] Email summarization
 - [ ] Automatic re-indexing on schedule
-
-## 📝 License
-
-See [LICENSE](LICENSE) file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-## 📧 Support
-
-For issues and questions, please open a GitHub issue.
 
 ---
 

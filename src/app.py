@@ -70,6 +70,7 @@ def main():
     # Sidebar
     with st.sidebar:
         st.title("📧 Gmail RAG Settings")
+        st.caption("🔒 Privacy-first: Local embeddings, email stays on your machine")
         
         st.markdown("---")
         

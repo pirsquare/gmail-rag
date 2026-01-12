@@ -7,7 +7,7 @@ openai==1.7.2
 # Vector Database
 chromadb==0.4.22
 
-# Embeddings
+# Local Embeddings (Privacy-focused - no external API calls)
 sentence-transformers==2.3.1
 
 # Gmail Integration
