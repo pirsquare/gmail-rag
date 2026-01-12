@@ -7,97 +7,76 @@ A powerful RAG (Retrieval-Augmented Generation) application that enables semanti
 - **Gmail Integration**: Seamlessly fetch and index emails from your Gmail account
 - **Semantic Search**: Find relevant emails using natural language queries
 - **Conversational AI**: Chat with your inbox using GPT models
-- **Vector Database**: Efficient storage and retrieval using ChromaDB
-- **Modern UI**: Clean Streamlit interface for easy interaction
 - **🔒 Privacy-Focused**: Local embeddings - email content stays on your machine, only LLM interactions use APIs
+- **Vector Database**: Efficient local storage using ChromaDB
+- **Modern UI**: Clean Streamlit interface
 
 ## 🏗️ Architecture
 
-- **LangChain**: Orchestration and RAG pipeline
-- **ChromaDB**: Local vector database for embeddings
-- **Sentence-Transformers**: Local embeddings (no external API calls for embeddings)
+- **LangChain**: RAG pipeline orchestration
+- **ChromaDB**: Local vector database
+- **Sentence-Transformers**: Local embeddings (privacy-first, no external API calls)
 - **OpenAI LLM**: GPT models for conversational AI
-- **Gmail API**: Email retrieval
+- **Gmail API**: Secure email retrieval via OAuth 2.0
 - **Streamlit**: Interactive web interface
 
 ### Privacy Model
 
-- **Local Processing**: Email content and embeddings are processed and stored locally
-- **Minimal API Usage**: Only LLM conversations are sent to OpenAI (configurable)
+- **Local Processing**: Email content and embeddings processed and stored locally
+- **Minimal API Usage**: Only LLM conversations sent to OpenAI
 - **No Email Data Sent**: Email content never leaves your machine for embedding
 
 ## 📋 Prerequisites
 
-- Python 3.8 or higher
+- Python 3.8+
 - Gmail account
 - OpenAI API key
-- Google Cloud Console project (for Gmail API)
+- Google Cloud Console project (for Gmail API credentials)
 
-## 🚀 Setup Instructions
+## 🚀 Quick Start
 
-### 1. Clone the Repository
+### 1. Clone and Install
 
 ```bash
 git clone <repository-url>
 cd gmail-rag
-```
-
-### 2. Install Dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. Set Up Gmail API
+### 2. Set Up Gmail API
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing one
-3. Enable the Gmail API:
-   - Navigate to "APIs & Services" > "Library"
-   - Search for "Gmail API" and enable it
-4. Create OAuth 2.0 credentials:
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "OAuth client ID"
-   - Choose "Desktop app" as application type
-   - Download the credentials JSON file
-5. Rename the downloaded file to `credentials.json` and place it in the project root
+2. Create a new project
+3. Enable the Gmail API (APIs & Services → Library)
+4. Create OAuth 2.0 credentials (APIs & Services → Credentials)
+   - Application type: Desktop app
+   - Download credentials as JSON
+5. Rename to `credentials.json` and place in project root
 
-### 4. Configure Environment Variables
+### 3. Configure Environment
 
 ```bash
-# Copy the example environment file
 cp .env.example .env
-
-# Edit .env and add your OpenAI API key
-# OPENAI_API_KEY=your_actual_api_key_here
+# Edit .env and add your OPENAI_API_KEY
 ```
 
-### 5. Index Your Emails
+### 4. Index Emails
 
-You can index emails using either the CLI script or the web interface:
-
-**Option A: Using CLI**
 ```bash
 python run_indexer.py --max-emails 100
 ```
 
-**Option B: Using Web Interface**
-```bash
-streamlit run src/app.py
-# Then click "Fetch & Index Emails" in the sidebar
-```
+First run will prompt Gmail authentication.
 
-The first time you run this, you'll be prompted to authenticate with your Gmail account.
-
-### 6. Start Chatting
+### 5. Start Application
 
 ```bash
 streamlit run src/app.py
 ```
 
-Navigate to `http://localhost:8501` in your browser and start asking questions about your emails!
+Visit `http://localhost:8501` and start chatting!
 
-## 💡 Usage Examples
+## 💡 Usage
 
 ### Example Questions
 
@@ -105,83 +84,113 @@ Navigate to `http://localhost:8501` in your browser and start asking questions a
 - "Find emails from John about the project proposal"
 - "What are the latest updates on the marketing campaign?"
 - "Show me emails with attachments from last month"
-- "What did Sarah say about the budget?"
 
-### CLI Indexing Options
+### CLI Options
 
 ```bash
-# Index maximum 500 emails
+# Index specific number of emails
 python run_indexer.py --max-emails 500
 
-# Force re-indexing (replaces existing database)
+# Force re-index
 python run_indexer.py --force
 
 # Combine options
 python run_indexer.py --max-emails 1000 --force
 ```
 
+## 📁 Project Structure
+
+```
+gmail-rag/
+├── src/                    # Main application package
+│   ├── app.py             # Streamlit web interface
+│   ├── index_emails.py    # CLI indexing script
+│   ├── gmail_client.py    # Gmail API integration
+│   ├── email_processor.py # Email processing
+│   ├── rag_engine.py      # RAG pipeline
+│   └── config.py          # Configuration
+├── run_app.py             # App entry point
+├── run_indexer.py         # Indexer entry point
+├── requirements.txt       # Dependencies
+├── .env.example           # Config template
+├── QUICKSTART.md          # Quick reference
+├── PRIVACY.md             # Privacy documentation
+└── README.md              # This file
+```
+
 ## ⚙️ Configuration
 
-Edit [.env](.env) to customize:
+Edit `.env` to customize:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `OPENAI_API_KEY` | Your OpenAI API key | Required |
 | `MAX_EMAILS` | Maximum emails to fetch | 500 |
-| `LLM_MODEL` | GPT mosrc/config.py](src/| gpt-3.5-turbo |
+| `LLM_MODEL` | GPT model to use | gpt-3.5-turbo |
 | `TEMPERATURE` | LLM temperature (0-1) | 0.7 |
 | `CHROMA_PERSIST_DIRECTORY` | Vector DB location | ./chroma_db |
 
-Advanced settings in [config.py](config.py): on your machine
-- **Local Embeddings**: Uses sentence-transformers for embeddings - no external API calls needed
-- **Minimal External Calls**: Only LLM interactions use external APIs (can be replaced with local LLMs)
-- **API Keys**: Never commit `.env` file or credentials
-- **OAuth**: Gmail authentication uses secure OAuth 2.0
-- **Credentials**: `credentials.json` and `token.json` are gitignored
+Advanced settings in [src/config.py](src/config.py):
+- `CHUNK_SIZE`: Document chunk size (default: 1000)
+- `CHUNK_OVERLAP`: Chunk overlap (default: 200)
+- `TOP_K_RESULTS`: Number of documents to retrieve (default: 5)
+
+## 🔒 Security & Privacy
+
+- **Local Storage**: All email data and embeddings stored on your machine
+- **Local Embeddings**: Sentence-transformers (no external API calls)
+- **Minimal External Calls**: Only LLM interactions use OpenAI API
+- **OAuth Security**: Gmail authentication via secure OAuth 2.0
+- **Credentials**: Never commit `.env`, `credentials.json`, or `token.json`
 
 ### Data Flow
 
 ```
-Gmail Inbox → Local Storage → Local Embeddings → Vector DB (Local)
-            ↓
-        User Query → Local Similarity Search → Retrieved Docs → LLM API → Response
+Gmail → Local Storage → Local Embeddings → ChromaDB (Local)
+                                              ↓
+                                    Local Similarity Search
+                                              ↓
+                             Retrieved Context → OpenAI LLM → Response
 ```
 
-## 🔒 Security & Privacy
-
-- **Local Storage**: All email data and embeddings are stored locally
-- **API Keys**: Never commit `.env` file or credentials
-- **OAuth**: Gmail authentication uses secure OAuth 2.0
-- **Credentials**: `credentials.json` and `token.json` are gitignored
+For complete privacy details, see [PRIVACY.md](PRIVACY.md).
 
 ## 🐛 Troubleshooting
-local LLMs (Ollama, LLaMA, Mistral)
-- [ ] Support for multiple email accounts
-- [ ] Email filtering by date range, sender, labels
-- [ ] Export search results
-- [ ] Advanced metadata filtering
-- [ ] Email summarization
-- [ ] Automatic re-indexing on schedule
-- [ ] GPU acceleration for embeddings
+
+### "credentials.json not found"
+Download OAuth credentials from Google Cloud Console and place in project root.
+
+### "OPENAI_API_KEY is required"
+Set your OpenAI API key in the `.env` file.
+
 ### "No emails fetched"
-- Check your Gmail API is enabled
-- Verify OAuth authenticatiorun_indexer
-- Check internet connection
+- Verify Gmail API is enabled in Google Cloud Console
+- Check OAuth authentication succeeded
+- Ensure internet connection is active
 
 ### "Vector database empty"
-Run indexing first: `python index_emails.py` or use the web interface.
+Run indexing first: `python run_indexer.py` or use the web interface.
 
 ## 🚧 Future Enhancements
 
-- [ ] Support for multiple email accounts
-- [ ] Email filtering by date range, sender, labels
+- [ ] Local LLM support (Ollama, LLaMA, Mistral)
+- [ ] Multiple email account support
+- [ ] Date range and sender filtering
 - [ ] Export search results
-- [ ] Local LLM support (Ollama, LLaMA)
-- [ ] Advanced metadata filtering
+- [ ] GPU acceleration for embeddings
 - [ ] Email summarization
-- [ ] Automatic re-indexing on schedule
+- [ ] Automatic re-indexing scheduler
+
+## 📝 License
+
+See [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions welcome! Please open an issue or submit a pull request.
 
 ---
 
 Built with ❤️ using open-source Python libraries
+
 
