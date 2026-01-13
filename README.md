@@ -1,32 +1,81 @@
-# 📧 Gmail RAG - Semantic Search Your Inbox
+# 📧 Gmail RAG - LlamaIndex-Powered Inbox Agent
 
-A powerful RAG (Retrieval-Augmented Generation) application that enables semantic search and conversational AI interaction with your Gmail inbox using open-source Python libraries.
+A powerful RAG application with **LlamaIndex agent framework** that enables intelligent email management through natural language. Search emails, triage urgent messages, summarize threads, and draft replies using either OpenAI or local LLMs (Ollama).
 
 ## 🌟 Features
 
-- **Gmail Integration**: Seamlessly fetch and index emails from your Gmail account
-- **Semantic Search**: Find relevant emails using natural language queries
-- **Conversational AI**: Chat with your inbox using GPT models
-- **🔒 Privacy-Focused**: Local embeddings - email content stays on your machine, only LLM interactions use APIs
-- **Vector Database**: Efficient local storage using ChromaDB
-- **Modern UI**: Clean Streamlit interface
+- **LlamaIndex Agent Framework**: Intelligent tool routing with ReAct agent
+- **4 Specialized Tools**:
+  - 🔍 **search_emails**: Semantic search with full citations
+  - 🧵 **get_thread**: Retrieve complete email threads
+  - 📥 **triage_recent**: Find emails needing replies (ranked by urgency)
+  - ✍️ **draft_reply**: Generate reply drafts (never auto-sends)
+- **Flexible LLM Backend**: 
+  - ☁️ OpenAI (gpt-4o-mini) - cloud-based
+  - 🖥️ Ollama (llama3.2, mistral, etc.) - 100% local
+- **🔒 Privacy-Focused**: Local embeddings - emails stay on your machine
+- **Thread-Aware**: Intelligent grouping by Gmail thread IDs
+- **Citation-First**: Every response includes subject, sender, date, message_id, thread_id
 
 ## 🏗️ Architecture
 
-- **sentence-transformers**: Local embeddings (all-MiniLM-L6-v2) - privacy-first, no external API calls
-- **ChromaDB**: Local vector database for fast similarity search
-- **OpenAI API**: GPT-4o-mini for answer generation only
-- **Gmail API**: Secure email retrieval via OAuth 2.0
-- **Streamlit**: Clean web interface for interaction
-- **LangChain**: Minimal - only for Document schema and text splitting
+### LlamaIndex Agent Stack
+
+```
+Streamlit UI (app.py)
+    ↓
+GmailAgent (LlamaIndex ReActAgent)
+    ├─ System Prompt (strict citation policy)
+    ├─ Tool Router (automatic tool selection)
+    └─ 4 Tools:
+        ├─ EmailSearchTool → RAGEngine.semantic_search()
+        ├─ ThreadTool → ChromaDB (thread_id filter)
+        ├─ TriageTool → Keyword analysis + urgency scoring
+        └─ DraftTool → LLM generation (draft-only)
+    ↓
+RAGEngine (vector search + LLM calls)
+    ↓
+ChromaDB (local vectors) + sentence-transformers
+```
+
+### Core Components
+
+- **LlamaIndex**: Agent framework with ReAct reasoning, tool calling
+- **sentence-transformers**: Local embeddings (all-MiniLM-L6-v2) - 384 dims, ~80MB
+- **ChromaDB**: Local vector database with metadata filtering
+- **OpenAI / Ollama**: LLM for agent reasoning and draft generation
+- **Gmail API**: OAuth 2.0 read-only access
+- **Streamlit**: Interactive chat interface
 
 ### Privacy & Security
 
 - **Local Embeddings**: Email content embedded locally using sentence-transformers (all-MiniLM-L6-v2)
-- **Full Email Indexing**: Complete email bodies fetched and indexed for better search results
-- **Minimal API Calls**: Only LLM queries + context sent to OpenAI, never email content
-- **Local Storage**: Vector database and embeddings stored completely on your machine
-- **OAuth 2.0**: Secure Gmail authentication with minimal scopes (read-only)
+- **Full Email Indexing**: Complete email bodies (HTML→text) fetched and indexed
+- **Minimal API Calls**: Only agent queries + context sent to LLM (OpenAI or local Ollama)
+- **Local Storage**: Vector database stored in `./chroma_db/`
+- **OAuth 2.0**: Gmail read-only scope
+- **Draft Only**: Agent NEVER auto-sends emails - always generates drafts for review
+
+### LLM Options
+
+**Option 1: OpenAI (Cloud)**
+- Model: `gpt-4o-mini` (fast, cost-effective)
+- Requires: `OPENAI_API_KEY` in `.env`
+- Pros: Best reasoning, no local setup
+- Cons: API costs, data leaves machine
+
+**Option 2: Ollama (100% Local)**
+- Models: `llama3.2`, `mistral`, `phi3`, etc.
+- Requires: Ollama running locally
+- Pros: Free, private, no API limits
+- Cons: Slower, needs GPU for speed, may have lower quality reasoning
+
+Set in `.env`:
+```bash
+LLM_PROVIDER=ollama  # or 'openai'
+OLLAMA_MODEL=llama3.2
+OLLAMA_BASE_URL=http://localhost:11434
+```
 
 ## 📋 Prerequisites
 
@@ -62,7 +111,28 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+```
+
+Edit `.env` with your settings:
+
+**For OpenAI (cloud):**
+```bash
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your-key-here
+LLM_MODEL=gpt-4o-mini
+```
+
+**For Ollama (local):**
+```bash
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=llama3.2
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+Note: For Ollama, install from [ollama.ai](https://ollama.ai) and run:
+```bash
+ollama pull llama3.2  # or mistral, phi3, etc.
+ollama serve
 ```
 
 ### 4. Index Emails
@@ -83,29 +153,103 @@ Visit `http://localhost:8501` and start chatting!
 
 ## 💡 Usage
 
-## 💡 Usage Examples
+### Agent Tools Reference
 
-### Example Questions
+The agent automatically selects the right tool based on your query:
 
-- "What are the key points from the last email about the project?"
-- "Find all emails from John discussing the proposal"
-- "What updates have I received about the marketing campaign this week?"
-- "Show me emails with important decisions or action items"
-- "Summarize the recent conversation with my team"
+| Tool | Trigger Phrases | Example |
+|------|----------------|---------|
+| **search_emails** | "find", "search", "show me" | "Find emails from Sarah about budget" |
+| **get_thread** | "thread", "conversation", "show thread" | "Show me thread abc123" |
+| **triage_recent** | "need replies", "urgent", "action items" | "What needs replies from last week?" |
+| **draft_reply** | "draft", "reply", "respond" | "Draft a friendly reply to thread xyz" |
 
-### How It Works
+### Example Queries
 
-1. **Indexing Phase**: 
-   - Fetches emails from Gmail (full content)
-   - Cleans and chunks the text
-   - Generates embeddings locally using sentence-transformers
-   - Stores vectors in ChromaDB
+**Search**
+- "What did John say about the Q4 project?"
+- "Find emails from Sarah about the budget"
+- "Show me invoices from last month"
 
-2. **Query Phase**:
-   - Converts your question to embeddings (local)
-   - Finds similar emails in ChromaDB
-   - Sends context + question to OpenAI
-   - Returns answer with source citations
+**Triage**
+- "What emails from the last 3 days need replies?"
+- "Show me urgent emails waiting for my response"
+- "Which messages are waiting for action?"
+
+**Thread**
+- "Show me the full thread abc123"
+- "Get the conversation history with Sarah"
+
+**Draft Reply**
+- "Draft a professional reply to thread xyz789"
+- "Help me respond to John's question (friendly tone)"
+- "Create a concise reply to the budget request"
+
+### How Agent Works
+
+1. **Indexing Phase** (one-time setup):
+   - Fetches emails from Gmail (full content, HTML→text)
+   - Cleans and chunks text (1000 chars, 200 overlap)
+   - Generates 384-dim embeddings **locally** (sentence-transformers)
+   - Stores vectors + metadata (thread_id, message_id) in ChromaDB
+
+2. **Agent Query Phase**:
+   - User enters natural language query in Streamlit
+   - **LlamaIndex ReAct Agent** reasons about which tool(s) to use
+   - Agent calls appropriate tools (search_emails, get_thread, etc.)
+   - For triage/draft: uses keyword analysis or LLM generation
+   - Returns response with **mandatory citations** (subject, sender, date, message_id, thread_id)
+   - Streamlit displays response + citations + optional triage table
+
+### Tool Selection Examples
+
+| User Query | Tool(s) Called | Why |
+|------------|---------------|-----|
+| "Find emails about budget" | `search_emails` | Semantic search needed |
+| "Show thread abc123" | `get_thread` | Explicit thread_id provided |
+| "What needs replies?" | `triage_recent` | Action-oriented query |
+| "Draft reply to xyz" | `get_thread` + `draft_reply` | Need context + generation |
+| "Urgent emails from last week" | `triage_recent(days=7)` | Time + urgency |
+
+### Switching LLM Providers
+
+**In Streamlit UI (Live):**
+1. Open sidebar in Streamlit
+2. Find "🤖 LLM Provider" section
+3. Select OpenAI or Ollama
+4. Agent automatically recreates with new provider
+
+**In .env (Persistent):**
+```bash
+# For OpenAI
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-your-api-key
+
+# For Ollama
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=llama3.2
+```
+
+### LLM Comparison
+
+| Feature | OpenAI | Ollama |
+|---------|--------|--------|
+| **Quality** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **Speed** | Fast | Slow (without GPU) |
+| **Privacy** | Cloud | 100% Local |
+| **Cost** | ~$0.15/1M tokens | Free |
+| **Setup** | API key only | Install + download model |
+
+### Citation Format
+
+Agent always includes full citations:
+```
+📧 Subject: Budget Review Q4
+From: sarah@company.com
+Date: 2026-01-10
+Message ID: <abc123@gmail.com>
+Thread ID: thread_xyz789
+```
 
 ### CLI Options
 
@@ -129,16 +273,20 @@ Edit `.env` to customize:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENAI_API_KEY` | Your OpenAI API key | Required |
+| `LLM_PROVIDER` | LLM provider (openai/ollama) | openai |
+| `OPENAI_API_KEY` | Your OpenAI API key | Required for OpenAI |
+| `OLLAMA_MODEL` | Ollama model name | llama3.2 |
+| `OLLAMA_BASE_URL` | Ollama server URL | http://localhost:11434 |
 | `MAX_EMAILS` | Maximum emails to fetch | 500 |
-| `LLM_MODEL` | GPT model to use | gpt-4o-mini |
+| `LLM_MODEL` | OpenAI model to use | gpt-4o-mini |
 | `TEMPERATURE` | LLM temperature (0-1) | 0.7 |
 | `CHROMA_PERSIST_DIRECTORY` | Vector DB location | ./chroma_db |
 
 Advanced settings in [src/config.py](src/config.py):
 - `CHUNK_SIZE`: Document chunk size (default: 1000)
 - `CHUNK_OVERLAP`: Chunk overlap (default: 200)
-- `TOP_K_RESULTS`: Number of documents to retrieve (default: 5)
+- `EMBEDDING_MODEL`: Sentence transformer model (default: all-MiniLM-L6-v2)
+- `EMBEDDING_DEVICE`: CPU or GPU (default: cpu)
 
 ## 🔒 Security & Privacy
 

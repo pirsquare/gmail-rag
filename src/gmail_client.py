@@ -84,7 +84,7 @@ class GmailClient:
             return []
     
     def _get_email_details(self, message_id):
-        """Get email details."""
+        """Get email details with full metadata."""
         try:
             message = self.service.users().messages().get(
                 userId='me', id=message_id, format='full'
@@ -94,10 +94,13 @@ class GmailClient:
             subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No Subject')
             sender = next((h['value'] for h in headers if h['name'] == 'From'), 'Unknown')
             date = next((h['value'] for h in headers if h['name'] == 'Date'), 'Unknown')
+            message_id_header = next((h['value'] for h in headers if h['name'] == 'Message-ID'), message_id)
             body = self._extract_body(message['payload'])
             
             return {
                 'id': message_id,
+                'message_id': message_id_header,
+                'thread_id': message.get('threadId', message_id),
                 'subject': subject,
                 'sender': sender,
                 'date': date,

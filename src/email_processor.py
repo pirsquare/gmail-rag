@@ -52,6 +52,8 @@ class EmailProcessor:
                 page_content=f"Subject: {subject}\n\nContent: {body}",
                 metadata={
                     'email_id': email['id'],
+                    'message_id': email.get('message_id', email['id']),
+                    'thread_id': email.get('thread_id', email['id']),
                     'subject': subject,
                     'sender': email.get('sender', 'Unknown'),
                     'date': email.get('date', 'Unknown'),

@@ -6,12 +6,17 @@ load_dotenv()
 
 
 class Config:
+    # LLM Provider ('openai' or 'ollama')
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai")
+    
     # OpenAI
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
     TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
-    MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "800"))
-    MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "6"))
+    
+    # Ollama (for local LLM)
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     
     # Gmail
     MAX_EMAILS = int(os.getenv("MAX_EMAILS", "500"))
@@ -22,7 +27,6 @@ class Config:
     EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "cpu")
     CHUNK_SIZE = 1000
     CHUNK_OVERLAP = 200
-    TOP_K_RESULTS = 5
     
     # ChromaDB
     CHROMA_PERSIST_DIRECTORY = os.getenv("CHROMA_PERSIST_DIRECTORY", "./chroma_db")
@@ -30,5 +34,8 @@ class Config:
     
     @classmethod
     def validate(cls):
-        if not cls.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY required. Set it in .env file")
+        if cls.LLM_PROVIDER == 'openai' and not cls.OPENAI_API_KEY:
+            raise ValueError("OPENAI_API_KEY required when LLM_PROVIDER=openai. Set it in .env file")
+        if cls.LLM_PROVIDER == 'ollama':
+            # Ollama doesn't need API key, but should be running
+            pass

@@ -35,8 +35,7 @@ class RAGEngine:
             device=Config.EMBEDDING_DEVICE
         )
         self.vectorstore = None
-        self._client = OpenAI(api_key=Config.OPENAI_API_KEY)
-        self.conversation_history = []
+        self._client = OpenAI(api_key=Config.OPENAI_API_KEY) if Config.OPENAI_API_KEY else None
 
         # Load existing vectorstore
         if os.path.exists(self.persist_directory) and os.listdir(self.persist_directory):
@@ -62,68 +61,23 @@ class RAGEngine:
             persist_directory=self.persist_directory
         )
 
-    def _retrieve_context(self, query, k):
-        """Retrieve relevant documents."""
+    def semantic_search(self, query, k=5):
+        """Search without LLM (used by agent tools)."""
         if not self.vectorstore:
-            raise ValueError("Vectorstore not initialized. Run indexing first.")
-
-        docs = self.vectorstore.similarity_search(query, k=k)
-        sources = []
-        context_parts = []
-
-        for d in docs:
-            md = d.metadata or {}
-            subject = md.get("subject", "(no subject)")
-            sender = md.get("sender", "(unknown)")
-            date = md.get("date", "(unknown)")
-            snippet = (d.page_content or "").strip()
-
-            sources.append({
-                "subject": subject,
-                "sender": sender,
-                "date": date,
-                "snippet": snippet[:400] + ("…" if len(snippet) > 400 else "")
-            })
-            context_parts.append(
-                f"Subject: {subject}\nFrom: {sender}\nDate: {date}\nContent:\n{snippet}\n"
-            )
-
-        return "\n---\n".join(context_parts), sources
-
-    def _build_prompt(self, query, context):
-        """Build prompt for LLM."""
-        system = (
-            "You are a helpful assistant that answers questions using Gmail email excerpts. "
-            "If the answer is not in the excerpts, say so. Cite emails by Subject line."
-        )
-        user = f"Question: {query}\n\nEmail excerpts:\n{context}\n\nAnswer concisely and cite sources."
-        
-        history = self.conversation_history[-Config.MAX_HISTORY_MESSAGES:]
-        return [{"role": "system", "content": system}, *history, {"role": "user", "content": user}]
-
-    def query(self, query, k=None):
-        """Query the RAG system."""
-        k = k or Config.TOP_K_RESULTS
-        context, sources = self._retrieve_context(query, k)
-        messages = self._build_prompt(query, context)
-
+            raise ValueError("Vectorstore not initialized")
+        return self.vectorstore.similarity_search(query, k=k)
+    
+    def _call_llm_simple(self, prompt, max_tokens=500):
+        """Simple LLM call for agent tools (OpenAI only)."""
+        if not self._client:
+            raise ValueError("OpenAI client not initialized")
         resp = self._client.chat.completions.create(
             model=Config.LLM_MODEL,
-            messages=messages,
+            messages=[{"role": "user", "content": prompt}],
             temperature=Config.TEMPERATURE,
-            max_tokens=Config.MAX_OUTPUT_TOKENS
+            max_tokens=max_tokens
         )
-        answer = resp.choices[0].message.content or ""
-
-        # Update history
-        self.conversation_history.append({"role": "user", "content": query})
-        self.conversation_history.append({"role": "assistant", "content": answer})
-
-        return {
-            "answer": answer,
-            "sources": sources,
-            "source_documents": self.vectorstore.similarity_search(query, k=k)
-        }
+        return resp.choices[0].message.content or ""
 
     def get_stats(self):
         """Get vectorstore stats."""
@@ -137,16 +91,5 @@ class RAGEngine:
 
         return {
             "status": "initialized",
-            "document_count": count,
-            "conversation_turns": len(self.conversation_history) // 2
+            "document_count": count
         }
-
-    def reset_conversation(self):
-        """Reset conversation history."""
-        self.conversation_history = []
-
-    def semantic_search(self, query, k=5):
-        """Search without LLM."""
-        if not self.vectorstore:
-            raise ValueError("Vectorstore not initialized")
-        return self.vectorstore.similarity_search(query, k=k)
