@@ -2,7 +2,12 @@
 from typing import List, Dict
 from bs4 import BeautifulSoup
 import re
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+try:
+    # Newer LangChain splitters live in a dedicated package
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:  # pragma: no cover
+    # Older LangChain versions
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from config import Config
 

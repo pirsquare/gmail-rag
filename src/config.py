@@ -13,6 +13,18 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     LLM_MODEL = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
     TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
+
+    # Storage / vector DB
+    VECTORSTORE_DIR = os.getenv("VECTORSTORE_DIR", "./vectorstore")
+
+    # Embeddings
+    EMBEDDING_DEVICE = os.getenv("EMBEDDING_DEVICE", "cpu")
+
+    # Indexing / chunking
+
+    # Chat behavior
+    MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "6"))
+    MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "800"))
     
     # Gmail Settings
     MAX_EMAILS = int(os.getenv("MAX_EMAILS", "500"))
@@ -35,7 +47,3 @@ class Config:
         """Validate required configuration."""
         if not cls.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is required for LLM. Please set it in .env file")
-
-
-# Validate configuration on import
-Config.validate()

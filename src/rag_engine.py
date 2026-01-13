@@ -1,268 +1,156 @@
-"""RAG engine for Gmail semantic search."""
+"""RAG engine for Gmail semantic search.
+
+This implementation keeps embeddings + vector search local (Chroma + sentence-transformers),
+and uses OpenAI only for the final answer generation.
+"""
+
+from __future__ import annotations
+
 import os
-from typing import List, Dict
+from dataclasses import dataclass
+from typing import List, Dict, Tuple, Optional
+
 from langchain.schema import Document
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-import openai
-from .config import Config
+
+from openai import OpenAI
+
+from config import Config
+
+
+@dataclass
+class QueryResult:
+    answer: str
+    sources: List[Dict]
 
 
 class RAGEngine:
     """RAG engine for semantic search over Gmail."""
 
-    def __init__(self, persist_directory: str = None):
-        """
-        Initialize RAG engine.
+    def __init__(self, persist_directory: Optional[str] = None):
+        self.persist_directory = persist_directory or Config.VECTORSTORE_DIR
 
-        Args:
-            persist_directory: Directory to persist ChromaDB
-        """
-        self.persist_directory = persist_directory or Config.CHROMA_PERSIST_DIRECTORY
-        # Use local embeddings for privacy - no data sent to external APIs
+        # Validate required config
+        Config.validate()
+
+        # Local embeddings (privacy-focused)
         self.embeddings = HuggingFaceEmbeddings(
             model_name=Config.EMBEDDING_MODEL,
-            model_kwargs={"device": "cpu"}  # Use CPU; change to "cuda" if GPU available
+            model_kwargs={"device": Config.EMBEDDING_DEVICE},
         )
-        self.vectorstore = None
-        self.conversation_history = []
 
-        # Set up OpenAI API
-        openai.api_key = Config.OPENAI_API_KEY
+        self.vectorstore: Optional[Chroma] = None
 
-        # Load existing vectorstore if it exists
-        if os.path.exists(self.persist_directory):
+        # OpenAI client (OpenAI Python SDK v1+)
+        self._client = OpenAI(api_key=Config.OPENAI_API_KEY)
+
+        # Keep a short conversation history (optional; used in prompt)
+        self.conversation_history: List[Dict[str, str]] = []
+
+        # Load existing vectorstore if present
+        if os.path.exists(self.persist_directory) and os.listdir(self.persist_directory):
             self._load_vectorstore()
 
-    def _load_vectorstore(self):
+    def _load_vectorstore(self) -> None:
         """Load existing vectorstore from disk."""
-        print(f"Loading existing vector database from {self.persist_directory}...")
         self.vectorstore = Chroma(
             collection_name=Config.COLLECTION_NAME,
             embedding_function=self.embeddings,
-            persist_directory=self.persist_directory
+            persist_directory=self.persist_directory,
         )
-        print(f"✓ Loaded vector database with {self.vectorstore._collection.count()} documents")
 
-    def create_vectorstore(self, documents: List[Document]):
-        """
-        Create and persist vectorstore from documents.
+    def create_vectorstore(self, documents: List[Document]) -> None:
+        """Create and persist a Chroma vectorstore from documents."""
+        if not documents:
+            raise ValueError("No documents provided to create_vectorstore().")
 
-        Args:
-            documents: List of documents to embed
-        """
-        print(f"Creating vector database with {len(documents)} documents...")
+        os.makedirs(self.persist_directory, exist_ok=True)
 
-        # Create vectorstore
         self.vectorstore = Chroma.from_documents(
             documents=documents,
             embedding=self.embeddings,
             collection_name=Config.COLLECTION_NAME,
-            persist_directory=self.persist_directory
+            persist_directory=self.persist_directory,
+        )
+        # Ensure persistence on disk
+        self.vectorstore.persist()
+
+    def _retrieve_context(self, query: str, k: int) -> Tuple[str, List[Dict]]:
+        """Retrieve relevant documents and format them for the LLM."""
+        if not self.vectorstore:
+            raise ValueError(
+                "Vectorstore not initialized. Run indexing first (run_indexer.py) or create_vectorstore()."
+            )
+
+        docs: List[Document] = self.vectorstore.similarity_search(query, k=k)
+
+        sources: List[Dict] = []
+        context_parts: List[str] = []
+
+        for d in docs:
+            md = d.metadata or {}
+            subject = md.get("subject", "(no subject)")
+            sender = md.get("sender", "(unknown sender)")
+            date = md.get("date", "(unknown date)")
+            snippet = (d.page_content or "").strip()
+
+            sources.append(
+                {
+                    "subject": subject,
+                    "sender": sender,
+                    "date": date,
+                    "snippet": snippet[:400] + ("…" if len(snippet) > 400 else ""),
+                }
+            )
+
+            context_parts.append(
+                f"Subject: {subject}\nFrom: {sender}\nDate: {date}\nContent:\n{snippet}\n"
+            )
+
+        context = "\n---\n".join(context_parts)
+        return context, sources
+
+    def _build_prompt(self, query: str, context: str) -> List[Dict[str, str]]:
+        system = (
+            "You are a helpful assistant that answers questions using the user's Gmail email excerpts. "
+            "If the answer is not present in the excerpts, say you can't find it. "
+            "When referencing information, cite the email by its Subject line."
         )
 
-        print(f"✓ Created and persisted vector database to {self.persist_directory}")
+        user = f"""Question:
+{query}
 
-    def _retrieve_context(self, query: str, k: int = 5) -> tuple:
-        """
-        Retrieve relevant documents from vectorstore.
-
-        Args:
-            query: Search query
-            k: Number of results
-
-        Returns:
-            Tuple of (documents, document sources)
-        """
-        if not self.vectorstore:
-            raise ValueError("Vectorstore not initialized. Run create_vectorstore first.")
-
-        results = self.vectorstore.similarity_search(query, k=k)
-        sources = [doc.metadata.get("source", "Unknown") for doc in results]
-        return results, sources
-
-    def _build_prompt(self, question: str, context_docs: List[Document]) -> str:
-        """
-        Build prompt for LLM with context.
-
-        Args:
-            question: User question
-            context_docs: Retrieved context documents
-
-        Returns:
-            Formatted prompt string
-        """
-        context = "\n\n".join([doc.page_content for doc in context_docs])
-
-        prompt = f"""You are a helpful AI assistant that answers questions based on the user's Gmail inbox.
-
-Use the following context from emails to answer the question. If you cannot find the answer in the context, say so.
-Always cite which email(s) you're referencing by mentioning the subject line.
-
-Context from emails:
+Email excerpts:
 {context}
 
-Question: {question}
+Instructions:
+- Answer concisely.
+- If relevant, include a short 'Citations:' section listing the Subject lines you relied on.
+"""
 
-Helpful Answer:"""
-        return prompt
+        # Keep history short to reduce token usage
+        history = self.conversation_history[-Config.MAX_HISTORY_MESSAGES :]
+        messages = [{"role": "system", "content": system}, *history, {"role": "user", "content": user}]
+        return messages
 
-    def _call_llm(self, prompt: str) -> str:
-        """
-        Call OpenAI LLM directly.
+    def query(self, query: str, k: int = None) -> Dict:
+        """Run a RAG query: retrieve context then ask the LLM."""
+        k = k or Config.TOP_K_RESULTS
+        context, sources = self._retrieve_context(query, k=k)
+        messages = self._build_prompt(query, context)
 
-        Args:
-            prompt: Formatted prompt
-
-        Returns:
-            LLM response
-        """
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant for Gmail search."},
-            *self.conversation_history,
-            {"role": "user", "content": prompt}
-        ]
-
-        response = openai.ChatCompletion.create(
+        resp = self._client.chat.completions.create(
             model=Config.LLM_MODEL,
             messages=messages,
             temperature=Config.TEMPERATURE,
-            max_tokens=1000
+            max_tokens=Config.MAX_OUTPUT_TOKENS,
         )
 
-        return response["choices"][0]["message"]["content"]
+        answer = resp.choices[0].message.content or ""
 
-    def setup_conversation_chain(self):
-        """Set up conversational retrieval chain."""
-        if not self.vectorstore:
-            raise ValueError("Vectorstore not initialized. Run create_vectorstore or load first.")
-
-        # Create custom prompt
-        prompt_template = """You are a helpful AI assistant that answers questions based on the user's Gmail inbox.
-
-Use the following context from emails to answer the question. If you cannot find the answer in the context, say so.
-Always cite which email(s) you're referencing by mentioning the subject line.
-
-Context from emails:
-{context}
-
-Question: {question}
-
-Helpful Answer:"""
-
-        PROMPT = PromptTemplate(
-            template=prompt_template,
-            input_variables=["context", "question"]
-        )
-
-        # Create LLM
-        llm = ChatOpenAI(
-            model_name=Config.LLM_MODEL,
-            temperature=Config.TEMPERATURE,
-            openai_api_key=Config.OPENAI_API_KEY
-        )
-
-        # Create retrieval chain
-        self.conversation_chain = ConversationalRetrievalChain.from_llm(
-            llm=llm,
-            retriever=self.vectorstore.as_retriever(
-                search_kwargs={"k": Config.TOP_K_RESULTS}
-            ),
-            memory=self.memory,
-            return_source_documents=True,
-            combine_docs_chain_kwargs={"prompt": PROMPT}
-        )
-
-        print("✓ Conversation chain ready")
-
-    def query(self, question: str) -> Dict:
-        """
-        Query the RAG system.
-
-        Args:
-            question: User question
-
-        Returns:
-            Dictionary with answer and source documents
-        """
-        # Retrieve relevant documents
-        context_docs, sources = self._retrieve_context(question, k=Config.TOP_K_RESULTS)
-
-        # Build prompt with context
-        prompt = self._build_prompt(question, context_docs)
-
-        # Get LLM response
-        answer = self._call_llm(prompt)
-
-        # Update conversation history
-        self.conversation_history.append({"role": "user", "content": question})
+        # update history
+        self.conversation_history.append({"role": "user", "content": query})
         self.conversation_history.append({"role": "assistant", "content": answer})
 
-        return {
-            "answer": answer,
-            "source_documents": context_docs,
-            "sources": sources,
-            "chat_history": self.conversation_history.copy()
-        }
-
-    def semantic_search(self, query: str, k: int = 5) -> List[Document]:
-        """
-        Perform semantic search without LLM.
-
-        Args:
-            query: Search query
-            k: Number of results
-
-        Returns:
-            List of relevant documents
-        """
-        if not self.vectorstore:
-            raise ValueError("Vectorstore not initialized")
-
-        results = self.vectorstore.similarity_search(query, k=k)
-        return results
-
-    def reset_conversation(self):
-        """Reset conversation memory."""
-        self.conversation_history = []
-        print("✓ Conversation history cleared")
-
-    def get_stats(self) -> Dict:
-        """Get statistics about the vector database."""
-        if not self.vectorstore:
-            return {"status": "not_initialized"}
-
-        count = self.vectorstore._collection.count()
-        return {
-            "status": "initialized",
-            "document_count": count,
-            "persist_directory": self.persist_directory,
-            "conversation_turns": len(self.conversation_history) // 2
-        }
-
-
-if __name__ == "__main__":
-    # Test RAG engine
-    from .email_processor import EmailProcessor
-    
-    sample_emails = [
-        {
-            'id': '123',
-            'subject': 'Meeting Tomorrow',
-            'sender': 'john@example.com',
-            'date': '2024-01-01',
-            'body': 'Hi, let\'s meet tomorrow at 3pm to discuss the project. Looking forward to it!'
-        }
-    ]
-    
-    # Process emails
-    processor = EmailProcessor()
-    documents = processor.prepare_for_rag(sample_emails)
-    
-    # Create RAG engine
-    rag = RAGEngine()
-    rag.create_vectorstore(documents)
-    
-    # Test query
-    result = rag.query("When is the meeting?")
-    print(f"\nAnswer: {result['answer']}")
+        return {"answer": answer, "sources": sources}
