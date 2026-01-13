@@ -1,6 +1,8 @@
 # 📧 Gmail RAG - LlamaIndex-Powered Inbox Agent
 
-A powerful RAG application with **LlamaIndex agent framework** that enables intelligent email management through natural language. Search emails, triage urgent messages, summarize threads, and draft replies using either OpenAI or local LLMs (Ollama).
+A simple RAG application with **LlamaIndex agent framework** that enables intelligent email management through natural language. Search emails, triage urgent messages, summarize threads, and draft replies using either OpenAI or local LLMs (Ollama).
+
+Comes with dashboard to help you view gmail inbox stats as well.
 
 ## 📑 Table of Contents
 
