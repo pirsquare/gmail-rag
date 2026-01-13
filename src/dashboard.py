@@ -32,10 +32,9 @@ st.set_page_config(
 st.title("📊 Gmail Analytics Dashboard")
 
 
-# Initialize database
-@st.cache_resource
+# Initialize database connection (fresh per session to avoid threading issues)
 def get_database():
-    """Get database connection."""
+    """Get database connection - fresh connection to avoid threading issues."""
     db_path = "data/gmail_stats.db"
     if not Path(db_path).exists():
         st.error(f"❌ Database not found at {db_path}")
@@ -44,17 +43,17 @@ def get_database():
     return GmailDatabase(db_path)
 
 
-db = get_database()
-
-
 # Sidebar filters
 st.sidebar.header("🔍 Filters")
 
-# Date range
+# Date range - get with fresh connection
+db_temp = get_database()
 all_emails = pd.read_sql_query(
     "SELECT MIN(date_timestamp) as min_date, MAX(date_timestamp) as max_date FROM emails",
-    db.conn
+    db_temp.conn
 )
+db_temp.close()
+
 min_ts = int(all_emails['min_date'].iloc[0]) if all_emails['min_date'].iloc[0] else 0
 max_ts = int(all_emails['max_date'].iloc[0]) if all_emails['max_date'].iloc[0] else int(datetime.now().timestamp())
 
@@ -75,8 +74,11 @@ label_filter = st.sidebar.selectbox(
     index=0
 )
 
-# Domain filter
-all_domains = db.get_all_domains()
+# Domain filter - get unique domains with fresh connection
+db_temp = get_database()
+all_domains = db_temp.get_all_domains()
+db_temp.close()
+
 domain_filter = st.sidebar.selectbox(
     "From Domain",
     options=["All"] + all_domains,
@@ -112,12 +114,15 @@ if search_keyword:
 
 # Main content
 st.sidebar.markdown("---")
-st.sidebar.caption(f"📁 Database: `{db.db_path}`")
+st.sidebar.caption("📁 Database: `data/gmail_stats.db`")
 
 
 # KPI Cards
 st.header("📈 Key Metrics")
+
+db = get_database()
 stats = db.get_stats(filters)
+db.close()
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -143,7 +148,10 @@ st.markdown("---")
 st.header("📊 Analytics")
 
 # Emails by day
+db = get_database()
 emails_by_day = db.get_emails_by_day(filters)
+db.close()
+
 if emails_by_day:
     df_by_day = pd.DataFrame(emails_by_day)
     df_by_day['day'] = pd.to_datetime(df_by_day['day'])
@@ -166,7 +174,10 @@ col_left, col_right = st.columns(2)
 
 with col_left:
     # Top senders
+    db = get_database()
     top_senders = db.get_top_senders(limit=10, filters=filters)
+    db.close()
+    
     if top_senders:
         df_senders = pd.DataFrame(top_senders)
         fig_senders = px.bar(
@@ -184,7 +195,10 @@ with col_left:
 
 with col_right:
     # Top domains
+    db = get_database()
     top_domains = db.get_top_domains(limit=10, filters=filters)
+    db.close()
+    
     if top_domains:
         df_domains = pd.DataFrame(top_domains)
         fig_domains = px.bar(
@@ -201,7 +215,10 @@ with col_right:
         st.info("No domain data available.")
 
 # Label breakdown
+db = get_database()
 label_breakdown = db.get_label_breakdown(filters)
+db.close()
+
 if label_breakdown:
     df_labels = pd.DataFrame(label_breakdown)
     
@@ -229,7 +246,10 @@ if label_breakdown:
         st.plotly_chart(fig_labels_pie, use_container_width=True)
 
 # Hour of day heatmap
+db = get_database()
 hour_dist = db.get_hour_distribution(filters)
+db.close()
+
 if hour_dist:
     df_hours = pd.DataFrame(hour_dist)
     
@@ -273,8 +293,10 @@ if AGENT_AVAILABLE:
                 # Create agent
                 agent = create_agent(rag_engine, llm_provider)
                 
-                # Get top 20 threads
+                # Get top 20 threads with fresh connection
+                db = get_database()
                 top_threads = db.get_recent_threads(limit=20, filters=filters)
+                db.close()
                 
                 # Build summary stats
                 thread_summary = f"""Based on the filtered inbox data:
@@ -326,7 +348,9 @@ st.markdown("---")
 # Thread Drill-Down
 st.header("📨 Recent Threads")
 
+db = get_database()
 recent_threads = db.get_recent_threads(limit=50, filters=filters)
+db.close()
 
 if recent_threads:
     # Display as table
@@ -350,7 +374,9 @@ if recent_threads:
     )
     
     if selected_thread:
+        db = get_database()
         messages = db.get_thread_messages(selected_thread, limit=10)
+        db.close()
         
         if messages:
             st.caption(f"Showing last {len(messages)} messages in thread")
