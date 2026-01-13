@@ -1,10 +1,10 @@
 """Streamlit web interface for Gmail RAG chatbot."""
 import streamlit as st
 import os
-from .gmail_client import GmailClient
-from .email_processor import EmailProcessor
-from .rag_engine import RAGEngine
-from .config import Config
+from gmail_client import GmailClient
+from email_processor import EmailProcessor
+from rag_engine import RAGEngine
+from config import Config
 
 
 def initialize_session_state():

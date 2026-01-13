@@ -1,9 +1,9 @@
 """CLI script to index Gmail emails into vector database."""
 import argparse
-from .gmail_client import GmailClient
-from .email_processor import EmailProcessor
-from .rag_engine import RAGEngine
-from .config import Config
+from gmail_client import GmailClient
+from email_processor import EmailProcessor
+from rag_engine import RAGEngine
+from config import Config
 
 
 def main():

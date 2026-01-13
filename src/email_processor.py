@@ -2,9 +2,9 @@
 from typing import List, Dict
 from bs4 import BeautifulSoup
 import re
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema import Document
-from .config import Config
+from config import Config
 
 
 class EmailProcessor:
