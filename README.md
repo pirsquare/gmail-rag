@@ -403,7 +403,7 @@ Gmail → Local Storage → Local Embeddings → ChromaDB (Local)
                              Retrieved Context → OpenAI LLM → Response
 ```
 
-For complete privacy details, see [PRIVACY.md](PRIVACY.md).
+All email data and embeddings are stored locally on your machine. No data leaves your system except optional LLM API calls (OpenAI) or stays fully local (Ollama).
 
 ## 🐛 Troubleshooting
 
@@ -419,7 +419,7 @@ Set your OpenAI API key in the `.env` file.
 - Ensure internet connection is active
 
 ### "Vector database empty"
-Run indexing first: `python run_indexer.py` or use the web interface.
+Run indexing first: `python src/index_emails.py` or see [Quick Start](#-quick-start) section.
 
 ## 🚧 Future Enhancements
 
