@@ -93,9 +93,16 @@ class GmailClient:
             headers = message['payload']['headers']
             subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No Subject')
             sender = next((h['value'] for h in headers if h['name'] == 'From'), 'Unknown')
+            to = next((h['value'] for h in headers if h['name'] == 'To'), '')
             date = next((h['value'] for h in headers if h['name'] == 'Date'), 'Unknown')
             message_id_header = next((h['value'] for h in headers if h['name'] == 'Message-ID'), message_id)
             body = self._extract_body(message['payload'])
+            
+            # Get labels
+            label_ids = message.get('labelIds', [])
+            
+            # Check for attachments
+            has_attachments = self._has_attachments(message['payload'])
             
             return {
                 'id': message_id,
@@ -103,13 +110,27 @@ class GmailClient:
                 'thread_id': message.get('threadId', message_id),
                 'subject': subject,
                 'sender': sender,
+                'to': to,
                 'date': date,
                 'body': body,
-                'snippet': message.get('snippet', '')
+                'snippet': message.get('snippet', ''),
+                'labelIds': label_ids,
+                'hasAttachments': has_attachments
             }
         except HttpError as error:
             print(f'Error fetching message {message_id}: {error}')
             return None
+    
+    def _has_attachments(self, payload):
+        """Check if message has attachments."""
+        if 'parts' in payload:
+            for part in payload['parts']:
+                if part.get('filename'):
+                    return True
+                if 'parts' in part:
+                    if self._has_attachments(part):
+                        return True
+        return False
     
     def _extract_body(self, payload):
         """Extract full email body from payload."""

@@ -138,15 +138,23 @@ ollama serve
 ### 4. Index Emails
 
 ```bash
-python run_indexer.py --max-emails 100
+python src/index_emails.py --max-emails 500
 ```
 
-First run will prompt Gmail authentication.
+First run will prompt Gmail authentication. This creates:
+- Vector database in `./chroma_db/`
+- Analytics database at `data/gmail_stats.db`
 
 ### 5. Start Application
 
+**Chat Interface (LlamaIndex Agent):**
 ```bash
 streamlit run src/app.py
+```
+
+**Analytics Dashboard:**
+```bash
+streamlit run src/dashboard.py
 ```
 
 Visit `http://localhost:8501` and start chatting!
@@ -255,17 +263,86 @@ Thread ID: thread_xyz789
 
 ```bash
 # Index first 100 emails
-python run_indexer.py --max-emails 100
+python src/index_emails.py --max-emails 100
 
 # Index 500 emails
-python run_indexer.py --max-emails 500
+python src/index_emails.py --max-emails 500
 
 # Force re-index existing data
-python run_indexer.py --force
+python src/index_emails.py --force
 
 # Combine options
-python run_indexer.py --max-emails 1000 --force
+python src/index_emails.py --max-emails 1000 --force
 ```
+
+## 📊 Analytics Dashboard
+
+The dashboard provides visual insights into your Gmail inbox patterns using local SQLite data.
+
+### Running the Dashboard
+
+```bash
+streamlit run src/dashboard.py
+```
+
+### Features
+
+**Sidebar Filters:**
+- 📅 Date range picker
+- 🏷️ Label filter (INBOX, SENT, STARRED, etc.)
+- 🌐 Domain filter (filter by sender domain)
+- 📧 Unread-only toggle
+- 🔍 Keyword search
+
+**KPI Cards:**
+- Total emails in filtered view
+- Unread count
+- Unique senders
+- Top domain
+- Average emails per day
+
+**Charts:**
+- 📈 **Emails Over Time**: Line chart showing daily email volume
+- 👥 **Top Senders**: Bar chart of most frequent senders
+- 🌐 **Top Domains**: Bar chart of most active domains
+- 🏷️ **Label Distribution**: Bar and pie charts showing label breakdown
+- 🕐 **Hour of Day Heatmap**: When do you receive most emails?
+
+**AI Insights (Optional):**
+- 🤖 Click "Generate Inbox Insights" button
+- Uses your configured LLM (OpenAI or Ollama) to analyze:
+  - Inbox patterns and trends
+  - Top 20 recent threads
+  - Actionable recommendations
+- **Note**: Does NOT send full email bodies to LLM, only aggregated stats + thread metadata
+
+**Thread Drill-Down:**
+- View 50 most recent threads
+- Click to expand and see last 10 messages
+- Shows subject, sender, date, snippet
+- Indicators for unread (🔵) and starred (⭐) emails
+
+### Data Refresh
+
+Dashboard data updates automatically when you re-run indexing:
+
+```bash
+python src/index_emails.py --force
+```
+
+This will:
+1. Re-fetch emails from Gmail
+2. Update ChromaDB vector database
+3. **Update SQLite analytics database** (`data/gmail_stats.db`)
+
+The dashboard queries SQLite directly, so no need to restart after indexing.
+
+### Privacy Note
+
+- All analytics data stored locally in `data/gmail_stats.db`
+- No external API calls except optional LLM insights
+- SQLite database contains metadata only (no full email bodies)
+- Metadata stored: date, sender, subject, snippet, labels, thread_id
 
 ## ⚙️ Configuration
 
@@ -326,13 +403,15 @@ Run indexing first: `python run_indexer.py` or use the web interface.
 
 ## 🚧 Future Enhancements
 
-- [ ] Local LLM support (Ollama, LLaMA, Mistral)
+- [x] Local LLM support (Ollama)
+- [x] Analytics dashboard with visual insights
 - [ ] Multiple email account support
-- [ ] Date range and sender filtering
-- [ ] Export search results
+- [ ] Advanced date range and sender filtering in chat
+- [ ] Export search results to CSV
 - [ ] GPU acceleration for embeddings
-- [ ] Email summarization
+- [ ] Email summarization by date range
 - [ ] Automatic re-indexing scheduler
+- [ ] Email attachment analysis
 
 ## 📝 License
 

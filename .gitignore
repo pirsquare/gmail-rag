@@ -33,6 +33,11 @@ token.json
 # ChromaDB
 chroma_db/
 
+# Analytics Database
+data/gmail_stats.db
+data/*.db
+data/*.db-journal
+
 # Streamlit
 .streamlit/secrets.toml
 

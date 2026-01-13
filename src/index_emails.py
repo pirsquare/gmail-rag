@@ -3,6 +3,7 @@ import argparse
 from gmail_client import GmailClient
 from email_processor import EmailProcessor
 from rag_engine import RAGEngine
+from db_manager import export_gmail_metadata_to_sqlite
 from config import Config
 
 
@@ -64,13 +65,23 @@ def main():
     rag_engine.create_vectorstore(documents)
     
     print()
+    
+    # Export metadata to SQLite
+    print("Step 4: Exporting metadata to SQLite")
+    print("-" * 60)
+    export_gmail_metadata_to_sqlite(emails)
+    
+    print()
     print("=" * 60)
     print("✓ Indexing complete!")
     print(f"  - Indexed {len(emails)} emails")
     print(f"  - Created {len(documents)} document chunks")
-    print(f"  - Saved to: {rag_engine.persist_directory}")
+    print(f"  - Vector DB: {rag_engine.persist_directory}")
+    print(f"  - SQLite DB: data/gmail_stats.db")
     print()
-    print("You can now run the app: streamlit run app.py")
+    print("Next steps:")
+    print("  - Chat: streamlit run src/app.py")
+    print("  - Analytics: streamlit run src/dashboard.py")
     print("=" * 60)
 
 
