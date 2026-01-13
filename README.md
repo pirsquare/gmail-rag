@@ -285,6 +285,12 @@ The dashboard provides visual insights into your Gmail inbox patterns using loca
 streamlit run src/dashboard.py
 ```
 
+### Dashboard UI Preview
+
+![Gmail Analytics Dashboard](static/gmail-analytics-dashboard.png)
+
+*Dashboard showing KPI cards, top senders/domains, email distribution, and recent threads*
+
 ### Features
 
 **Sidebar Filters:**
