@@ -13,25 +13,30 @@ A powerful RAG (Retrieval-Augmented Generation) application that enables semanti
 
 ## 🏗️ Architecture
 
-- **LangChain**: RAG pipeline orchestration
-- **ChromaDB**: Local vector database
-- **Sentence-Transformers**: Local embeddings (privacy-first, no external API calls)
-- **OpenAI LLM**: GPT models for conversational AI
+- **sentence-transformers**: Local embeddings (all-MiniLM-L6-v2) - privacy-first, no external API calls
+- **ChromaDB**: Local vector database for fast similarity search
+- **OpenAI API**: GPT-4o-mini for answer generation only
 - **Gmail API**: Secure email retrieval via OAuth 2.0
-- **Streamlit**: Interactive web interface
+- **Streamlit**: Clean web interface for interaction
+- **LangChain**: Minimal - only for Document schema and text splitting
 
-### Privacy Model
+### Privacy & Security
 
-- **Local Processing**: Email content and embeddings processed and stored locally
-- **Minimal API Usage**: Only LLM conversations sent to OpenAI
-- **No Email Data Sent**: Email content never leaves your machine for embedding
+- **Local Embeddings**: Email content embedded locally using sentence-transformers (all-MiniLM-L6-v2)
+- **Full Email Indexing**: Complete email bodies fetched and indexed for better search results
+- **Minimal API Calls**: Only LLM queries + context sent to OpenAI, never email content
+- **Local Storage**: Vector database and embeddings stored completely on your machine
+- **OAuth 2.0**: Secure Gmail authentication with minimal scopes (read-only)
 
 ## 📋 Prerequisites
 
-- Python 3.8+
+- Python 3.8+ (3.9-3.11 recommended)
 - Gmail account
 - OpenAI API key
 - Google Cloud Console project (for Gmail API credentials)
+
+### Why Python 3.8-3.11?
+Some dependencies (torch, sentence-transformers) have compatibility issues with Python 3.13+. Use 3.9-3.11 for best compatibility.
 
 ## 🚀 Quick Start
 
@@ -78,20 +83,40 @@ Visit `http://localhost:8501` and start chatting!
 
 ## 💡 Usage
 
+## 💡 Usage Examples
+
 ### Example Questions
 
-- "What meetings do I have scheduled this week?"
-- "Find emails from John about the project proposal"
-- "What are the latest updates on the marketing campaign?"
-- "Show me emails with attachments from last month"
+- "What are the key points from the last email about the project?"
+- "Find all emails from John discussing the proposal"
+- "What updates have I received about the marketing campaign this week?"
+- "Show me emails with important decisions or action items"
+- "Summarize the recent conversation with my team"
+
+### How It Works
+
+1. **Indexing Phase**: 
+   - Fetches emails from Gmail (full content)
+   - Cleans and chunks the text
+   - Generates embeddings locally using sentence-transformers
+   - Stores vectors in ChromaDB
+
+2. **Query Phase**:
+   - Converts your question to embeddings (local)
+   - Finds similar emails in ChromaDB
+   - Sends context + question to OpenAI
+   - Returns answer with source citations
 
 ### CLI Options
 
 ```bash
-# Index specific number of emails
+# Index first 100 emails
+python run_indexer.py --max-emails 100
+
+# Index 500 emails
 python run_indexer.py --max-emails 500
 
-# Force re-index
+# Force re-index existing data
 python run_indexer.py --force
 
 # Combine options
