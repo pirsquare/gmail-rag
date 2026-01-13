@@ -2,9 +2,24 @@
 import os
 from langchain.schema import Document
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from sentence_transformers import SentenceTransformer
 from openai import OpenAI
 from config import Config
+
+
+class LocalEmbeddings:
+    """Wrapper for sentence-transformers to work with Chroma."""
+    
+    def __init__(self, model_name, device="cpu"):
+        self.model = SentenceTransformer(model_name, device=device)
+    
+    def embed_documents(self, texts):
+        """Embed a list of documents."""
+        return self.model.encode(texts, show_progress_bar=False).tolist()
+    
+    def embed_query(self, text):
+        """Embed a single query."""
+        return self.model.encode([text], show_progress_bar=False)[0].tolist()
 
 
 class RAGEngine:
@@ -14,10 +29,10 @@ class RAGEngine:
         self.persist_directory = persist_directory or Config.CHROMA_PERSIST_DIRECTORY
         Config.validate()
 
-        # Local embeddings (sentence-transformers)
-        self.embeddings = HuggingFaceEmbeddings(
+        # Local embeddings (sentence-transformers directly)
+        self.embeddings = LocalEmbeddings(
             model_name=Config.EMBEDDING_MODEL,
-            model_kwargs={"device": Config.EMBEDDING_DEVICE}
+            device=Config.EMBEDDING_DEVICE
         )
         self.vectorstore = None
         self._client = OpenAI(api_key=Config.OPENAI_API_KEY)
