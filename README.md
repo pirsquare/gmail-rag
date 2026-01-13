@@ -2,6 +2,20 @@
 
 A powerful RAG application with **LlamaIndex agent framework** that enables intelligent email management through natural language. Search emails, triage urgent messages, summarize threads, and draft replies using either OpenAI or local LLMs (Ollama).
 
+## 📑 Table of Contents
+
+- [🌟 Features](#-features)
+- [🏗️ Architecture](#️-architecture)
+- [📋 Prerequisites](#-prerequisites)
+- [🚀 Quick Start](#-quick-start)
+- [💡 Usage](#-usage)
+- [📊 Analytics Dashboard](#-analytics-dashboard)
+- [⚙️ Configuration](#️-configuration)
+- [🔒 Security & Privacy](#-security--privacy)
+- [🐛 Troubleshooting](#-troubleshooting)
+- [🚧 Future Enhancements](#-future-enhancements)
+- [📝 License](#-license)
+
 ## 🌟 Features
 
 - **LlamaIndex Agent Framework**: Intelligent tool routing with ReAct agent
