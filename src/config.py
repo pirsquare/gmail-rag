@@ -8,7 +8,7 @@ load_dotenv()
 class Config:
     # OpenAI
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    LLM_MODEL = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
+    LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
     TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
     MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "800"))
     MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "6"))

@@ -29,15 +29,23 @@ class EmailProcessor:
         return text.strip()
     
     def process_emails(self, emails):
-        """Process emails into documents."""
+        """Process emails into documents with full content."""
         documents = []
         print(f"Processing {len(emails)} emails...")
         
+        skipped = 0
         for email in emails:
             subject = email.get('subject', 'No Subject')
-            body = self.clean_text(email.get('body', email.get('snippet', '')))
+            # Always prefer full body over snippet
+            body = email.get('body', '').strip()
+            if not body:
+                body = email.get('snippet', '').strip()
             
-            if len(body) < 50:
+            body = self.clean_text(body)
+            
+            # Only skip if completely empty
+            if not body:
+                skipped += 1
                 continue
             
             doc = Document(
@@ -52,7 +60,7 @@ class EmailProcessor:
             )
             documents.append(doc)
         
-        print(f"✓ Created {len(documents)} documents")
+        print(f"✓ Created {len(documents)} documents (skipped {skipped} empty emails)")
         return documents
     
     def chunk_documents(self, documents):

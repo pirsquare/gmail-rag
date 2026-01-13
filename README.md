@@ -106,7 +106,7 @@ Edit `.env` to customize:
 |----------|-------------|---------|
 | `OPENAI_API_KEY` | Your OpenAI API key | Required |
 | `MAX_EMAILS` | Maximum emails to fetch | 500 |
-| `LLM_MODEL` | GPT model to use | gpt-3.5-turbo |
+| `LLM_MODEL` | GPT model to use | gpt-4o-mini |
 | `TEMPERATURE` | LLM temperature (0-1) | 0.7 |
 | `CHROMA_PERSIST_DIRECTORY` | Vector DB location | ./chroma_db |
 

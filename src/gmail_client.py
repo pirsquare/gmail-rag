@@ -1,5 +1,7 @@
 """Gmail API client."""
 import os
+import base64
+from bs4 import BeautifulSoup
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -107,22 +109,38 @@ class GmailClient:
             return None
     
     def _extract_body(self, payload):
-        """Extract email body from payload."""
+        """Extract full email body from payload."""
         import base64
         
         body = ""
         
+        # Handle multipart messages
         if 'parts' in payload:
+            # First pass: try to find text/plain
             for part in payload['parts']:
                 if part['mimeType'] == 'text/plain' and 'data' in part['body']:
-                    body = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8')
-                    break
-                elif part['mimeType'] == 'multipart/alternative':
+                    body = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8', errors='ignore')
+                    return body
+            
+            # Second pass: try text/html if no plain text
+            for part in payload['parts']:
+                if part['mimeType'] == 'text/html' and 'data' in part['body']:
+                    html = base64.urlsafe_b64decode(part['body']['data']).decode('utf-8', errors='ignore')
+                    # Convert HTML to plain text
+                    body = BeautifulSoup(html, 'html.parser').get_text()
+                    return body
+            
+            # Recursively handle nested parts
+            for part in payload['parts']:
+                if 'parts' in part:
                     body = self._extract_body(part)
                     if body:
-                        break
-        elif 'body' in payload and 'data' in payload['body']:
-            body = base64.urlsafe_b64decode(payload['body']['data']).decode('utf-8')
+                        return body
+        
+        # Handle simple message with body
+        if 'body' in payload and 'data' in payload['body']:
+            body = base64.urlsafe_b64decode(payload['body']['data']).decode('utf-8', errors='ignore')
+            return body
         
         return body
 
